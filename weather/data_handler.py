@@ -8,13 +8,14 @@ class DataServiceHandler:
         """Initializes the DataServiceHandler with a specific service."""
         self.service = service
 
-    def print_data(self) -> None:
+    def print_data(self, latitude: float, longitude: float) -> None:
         """This method retrieves and prints or plots data based on the type of service."""
-        data = self.service.get_data()
-
         if isinstance(self.service, APICallingService):
-            self.service.plot_data(data)  
+            data = self.service.get_data(latitude, longitude)
+            hourly_times, hourly_temps = self.service.extract_temperature_data(data)
+            self.service.plot_data(hourly_times, hourly_temps) 
         elif isinstance(self.service, MockedDataService):
+            data = self.service.get_data()
             print(data)  
         else:
             print("Unsupported service type.")

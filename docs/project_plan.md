@@ -10,4 +10,4 @@ The plan for this project is to help users who want to travel and see how weathe
 - SQLite
 
 ## **3. Data Utilization**
-- Present results to user like a modern weather app 
+- Present results to user like a modern weather app

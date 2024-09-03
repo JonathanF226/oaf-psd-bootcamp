@@ -73,6 +73,67 @@ class PreferencesFactory:
             raise ValueError("Unknown preference type")
 
 
+def delete_favorite_city(city_name: str, preferences: Preferences):
+    """
+    This method removes a city from the favorites table in the database.
+
+    Args:
+        city_name (str): The name of the city to be removed from the favorites.
+        preferences (Preferences): User's temperature unit preferences.
+
+    Returns:
+        None
+    """
+    conn = sqlite3.connect('weather_app.db')
+    try:
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM favorites WHERE city_name = ? AND units = ?', (city_name, preferences.get_units()))
+        if cursor.rowcount > 0:
+            print(f"{city_name} has been removed from your favorites.")
+        else:
+            print(f"{city_name} was not found in your favorites.")
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def show_deletion_menu(api_key: str):
+    """
+    This method displays the user's favorite cities in a terminal menu and allows them to select a city to delete.
+
+    Args:
+        api_key (str): The API key used for accessing the weather service.
+    
+    Returns:
+        None
+    """
+    conn = sqlite3.connect('weather_app.db')
+    try:
+        cursor = conn.cursor()
+        cursor.execute('SELECT city_name, units FROM favorites')
+        favorites = cursor.fetchall()
+    
+        if favorites:
+            print("Your favorite cities:")
+            favorite_options = [f"{city} ({units})" for city, units in favorites]
+            favorite_options.append("Back")
+            favorite_menu = TerminalMenu(favorite_options, title="Select a city to delete")
+            favorite_index = favorite_menu.show()
+
+            if favorite_index == len(favorite_options) - 1: 
+                return
+            
+            selected_city, selected_units = favorites[favorite_index]
+            
+            preferences = PreferencesFactory.create_preferences(selected_units.lower())
+            
+            delete_favorite_city(selected_city, preferences)
+        else:
+            print("You have no favorite cities to delete.")
+    finally:
+        conn.close()
+
+
 def save_favorite_city(city_name: str, prefernces: Preferences):
     """
     This method adds a city to the favorites table in the database.
@@ -118,8 +179,12 @@ def show_favorites(api_key: str):
         if favorites:
             print("Your favorite cities:")
             favorite_options = [f"{city} ({units})" for city, units in favorites]
+            favorite_options.append("Back")
             favorite_menu = TerminalMenu(favorite_options, title="Select a favorite city to view weather")
             favorite_index = favorite_menu.show()
+
+            if favorite_index == len(favorite_options) - 1:
+                return
             
             selected_city, selected_units = favorites[favorite_index]
             
@@ -235,34 +300,39 @@ def search_city(api_key: str, preferences: Preferences, city_name: str = None):
 
 
 def main():
-    options = ["Search", "Favorites"]
-    terminal_menu = TerminalMenu(options, search_key="/", title="Weather App Menu")
-    menu_entry_index = terminal_menu.show()
+    while True:
+        options = ["Search", "Favorites", "Delete Favorite", "Exit"]
+        terminal_menu = TerminalMenu(options, search_key="/", title="Weather App Menu")
+        menu_entry_index = terminal_menu.show()
 
-    selected_option = options[menu_entry_index]
-    print(f"You have selected {selected_option}!")
+        selected_option = options[menu_entry_index]
+        print(f"You have selected {selected_option}!")
 
-    if selected_option == "Search":
-        # Preferences selection using menu
-        preference_options = ["Metric (Celsius)", "Imperial (Fahrenheit)", "Standard (Kelvin)"]
-        preference_menu = TerminalMenu(preference_options, title="Select Temperature Units")
-        preference_index = preference_menu.show()
-        
-        if preference_index == 0:
-            preference_input = "metric"
-        elif preference_index == 1:
-            preference_input = "imperial"
-        elif preference_index == 2:
-            preference_input = "standard"
+        if selected_option == "Search":
+            preference_options = ["Metric (Celsius)", "Imperial (Fahrenheit)", "Standard (Kelvin)"]
+            preference_menu = TerminalMenu(preference_options, title="Select Temperature Units")
+            preference_index = preference_menu.show()
+            
+            if preference_index == 0:
+                preference_input = "metric"
+            elif preference_index == 1:
+                preference_input = "imperial"
+            elif preference_index == 2:
+                preference_input = "standard"
+            else:
+                print("Invalid option selected.")
+                return
+            
+            preferences = PreferencesFactory.create_preferences(preference_input)
+
+            search_city(API_KEY, preferences)
+        elif selected_option == "Favorites":
+            show_favorites(API_KEY)
+        elif selected_option == "Delete Favorite":
+            show_deletion_menu(API_KEY)
         else:
-            print("Invalid option selected.")
-            return
-        
-        preferences = PreferencesFactory.create_preferences(preference_input)
-
-        search_city(API_KEY, preferences)
-    else:
-        show_favorites(API_KEY)
+            print("Exiting the app.")
+            break
 
 
 if __name__ == "__main__":
